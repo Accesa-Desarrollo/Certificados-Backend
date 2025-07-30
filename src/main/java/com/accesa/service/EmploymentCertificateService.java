@@ -10,9 +10,9 @@ import java.time.format.DateTimeFormatter;
 import java.sql.Connection;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
 import com.accesa.exception.DatabaseException;
 import com.accesa.exception.GenerationException;
+import com.accesa.exception.NotFoundException;
 import com.accesa.model.UserDataRequest;
 import com.accesa.model.UserDataResponse;
 
@@ -202,6 +202,31 @@ public class EmploymentCertificateService {
 		} catch (IOException e2) {
 			throw new GenerationException("error loading header image", e2);
 		}
+	}
+	
+	public void userExists(String id) {
+		
+		try {
+			Class.forName(DRIVER_ORACLE).getDeclaredConstructor().newInstance();
+		} catch (Exception e1) {
+			throw new DatabaseException("oracle loading issues found " + e1.getMessage(), e1);
+		}
+
+		String sql = "SELECT * FROM HUMANRESOURCES_STAFF hs WHERE hs.document ='" + id + "'";
+
+		try (Connection connection = DriverManager.getConnection(PROTOCOL_PORTAL, USER_PORTAL, PASSWORD_PORTAL);
+				Statement statement = connection.createStatement();
+				ResultSet result = statement.executeQuery(sql)) {
+
+			if (!result.next()) {
+	            throw new NotFoundException("Usuario " + id + " no encontrado");
+	        }
+
+		} catch (SQLException e) {
+			log.info("{}","error retrieving user data from portal" + e.getMessage());
+			throw new DatabaseException("error retrieving user data from portal" + e.getMessage(), e);			
+		}
+
 	}
 
 }

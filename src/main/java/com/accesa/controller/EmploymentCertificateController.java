@@ -17,6 +17,9 @@ import com.accesa.model.UserDataRequest;
 import com.accesa.model.UserDataResponse;
 import com.accesa.service.EmploymentCertificateService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
@@ -33,6 +36,10 @@ public class EmploymentCertificateController {
 		// TODO Auto-generated constructor stub
 	}
 
+	@Operation(summary = "Get user data")
+	@Parameter(name = "id", description = "User Id", example = "C991991", required = true)
+	@ApiResponse(responseCode = "200", description = "Successful response")
+	@ApiResponse(responseCode = "204", description = "No user information")
 	@GetMapping("/users/{id}")
 	public ResponseEntity<?> getUserData(@PathVariable("id") String id) {
 
@@ -46,8 +53,16 @@ public class EmploymentCertificateController {
 
 	}
 
+	@Operation(summary = "Generate an employment certificate", 
+			description = "given default/ optional attributes from a user, gives the possibility to generate an employment certificate.", 
+			requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "The user data set", required = true))
+	@ApiResponse(responseCode = "200", description = "Successful response")
+	@ApiResponse(responseCode = "500", description = "Internal server error")
+	@ApiResponse(responseCode = "404", description = "User not found")
 	@PostMapping("/certificates")
 	public ResponseEntity<?> generateCertificate(@Valid @RequestBody UserDataRequest request) {
+		
+		employmentCertificateService.userExists(request.getIdentityCard());
 
 		byte[] pdf = employmentCertificateService.generateCertificate(request);
 
