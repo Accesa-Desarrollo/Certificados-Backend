@@ -16,7 +16,7 @@ public class EmploymentcertificatesApplication {
 		SpringApplication.run(EmploymentcertificatesApplication.class, args);
 	}
 	
-	@Override
+	
 	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
 		return application.sources(EmploymentcertificatesApplication.class);
 	}
