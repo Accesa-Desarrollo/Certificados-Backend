@@ -10,13 +10,13 @@ import org.springframework.context.annotation.ComponentScan;
 
 @ComponentScan(basePackages = { "com.accesa", "com.accesa.controller", "com.accesa.service", "com.accesa.model", "com.accesa.exception" })
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
-public class EmploymentcertificatesApplication {
+public class EmploymentcertificatesApplication extends SpringBootServletInitializer{
 
 	public static void main(String[] args) {
 		SpringApplication.run(EmploymentcertificatesApplication.class, args);
 	}
 	
-	
+	@Override
 	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
 		return application.sources(EmploymentcertificatesApplication.class);
 	}
