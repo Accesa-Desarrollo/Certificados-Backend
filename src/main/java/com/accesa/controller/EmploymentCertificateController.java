@@ -68,7 +68,7 @@ public class EmploymentCertificateController {
 
 		return ResponseEntity.ok()
 				.header(HttpHeaders.CONTENT_DISPOSITION,
-						"attachment; filename=certificado_laboral_" + request.getIdentityCard() + ".pdf")
+						"attachment; filename=constancia_laboral_" + request.getIdentityCard() + ".pdf")
 				.contentType(MediaType.APPLICATION_PDF).body(pdf);
 	}
 

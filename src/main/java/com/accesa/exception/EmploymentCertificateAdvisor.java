@@ -42,11 +42,6 @@ public class EmploymentCertificateAdvisor {
 		return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
 	}
 	
-	@ExceptionHandler(NumberFormatException.class)
-	public ResponseEntity<Map<String, Object>> handleNumberFormatException(NumberFormatException ex) {
-		return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
-	}
-	
 	@ExceptionHandler(DateTimeException.class)
 	public ResponseEntity<Map<String, Object>> handleDateTimeException(DateTimeException ex) {
 		return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
