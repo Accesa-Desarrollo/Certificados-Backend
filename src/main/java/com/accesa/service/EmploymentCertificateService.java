@@ -94,6 +94,12 @@ public class EmploymentCertificateService {
 		}
 
 		if (userData != null) {
+			try {
+				Class.forName(DRIVER_GIRH).getDeclaredConstructor().newInstance();
+			} catch (Exception e2) {
+				throw new DatabaseException("SQLServer loading issues found " + e2.getMessage(), e2);
+			}
+			
 			String sqlGirh = "SELECT TOP 1 * FROM HISTORIC WHERE HisFunCod =" + userData.getIdentityCard() + " "
 					+ "AND HisConCod=803 ORDER BY HisLiqFch desc, hisImp DESC";
 			try (Connection connectionGirh = DriverManager.getConnection(PROTOCOL_GIRH, USER_GIRH, PASSWORD_GIRH);
