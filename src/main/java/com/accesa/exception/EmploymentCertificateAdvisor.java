@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-//import jakarta.persistence.PersistenceException;
-
 @ControllerAdvice
 public class EmploymentCertificateAdvisor {
 
@@ -44,11 +42,6 @@ public class EmploymentCertificateAdvisor {
 		return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
 	}
 	
-	@ExceptionHandler(NumberFormatException.class)
-	public ResponseEntity<Map<String, Object>> handleNumberFormatException(NumberFormatException ex) {
-		return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
-	}
-	
 	@ExceptionHandler(DateTimeException.class)
 	public ResponseEntity<Map<String, Object>> handleDateTimeException(DateTimeException ex) {
 		return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
@@ -67,10 +60,16 @@ public class EmploymentCertificateAdvisor {
 	}
 	
 	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<Map<String, Object>> handleMethodArgumentNotValidException(
-			MethodArgumentNotValidException ex) {
-		return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
-	}
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(
+            MethodArgumentNotValidException ex) {
+
+        Map<String, String> errores = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            errores.put(error.getField(), error.getDefaultMessage());
+        });
+
+        return ResponseEntity.badRequest().body(errores);
+    }
 
 	@ExceptionHandler(JsonParseException.class)
 	public ResponseEntity<Map<String, Object>> handleJsonParseException(JsonParseException ex) {
@@ -86,13 +85,12 @@ public class EmploymentCertificateAdvisor {
 	public ResponseEntity<Map<String, Object>> handleDatabaseException(DatabaseException ex) {
 		return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
 	}
-
-//	@ExceptionHandler(PersistenceException.class)
-//	public ResponseEntity<?> handlePersistenceException(PersistenceException ex) {
-//		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//				.body(Map.of("error", "Database error", "details", ex.getMessage()));
-//	}
-
+	
+	@ExceptionHandler(NotFoundException.class)
+	public ResponseEntity<Map<String, Object>> handleNotFoundException(NotFoundException ex) {
+		return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+	
 	private static ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String message) {
 		Map<String, Object> response = new HashMap<>();
 		response.put("timestamp", LocalDateTime.now());

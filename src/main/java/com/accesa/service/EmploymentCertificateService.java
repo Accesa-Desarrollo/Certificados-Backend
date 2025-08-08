@@ -10,9 +10,9 @@ import java.time.format.DateTimeFormatter;
 import java.sql.Connection;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
 import com.accesa.exception.DatabaseException;
 import com.accesa.exception.GenerationException;
+import com.accesa.exception.NotFoundException;
 import com.accesa.model.UserDataRequest;
 import com.accesa.model.UserDataResponse;
 
@@ -67,9 +67,9 @@ public class EmploymentCertificateService {
 			throw new DatabaseException("oracle loading issues found " + e1.getMessage(), e1);
 		}
 
-		String sql = "SELECT name||' '||LASTNAME||' '||SECONDLASTNAME fullName,DOCUMENT ,ENTRYDATE ,CHARGE ,SITE, pdd.HORDEFIN "
-				+ "FROM HUMANRESOURCES_STAFF hs " + "JOIN PARTE_DIARIO_DETALLE pdd " + "ON hs.document = pdd.cedula "
-				+ "WHERE hs.code ='" + id + "'";
+		String sql = "SELECT * from(SELECT name, LASTNAME, SECONDLASTNAME,DOCUMENT ,ENTRYDATE ,CHARGE ,SITE, pdd.HORDEFIN "
+				+ "FROM HUMANRESOURCES_STAFF hs JOIN PARTE_DIARIO_DETALLE pdd ON hs.document = pdd.cedula "
+				+ "WHERE hs.code ='" + id + "' " + "ORDER BY pdd.HORDEFIN  DESC" + ") WHERE rownum = 1";
 
 		try (Connection connection = DriverManager.getConnection(PROTOCOL_PORTAL, USER_PORTAL, PASSWORD_PORTAL);
 				Statement statement = connection.createStatement();
@@ -84,27 +84,49 @@ public class EmploymentCertificateService {
 				userData.setIdentityCard(String.valueOf(result.getString("document")));
 				userData.setJobPosition(result.getString("charge"));
 				userData.setSite(result.getString("site"));
-				userData.setFullName(result.getString("fullname"));
-				userData.setWorkHours(result.getString("hordefin"));
+
+				String name = result.getString("name").substring(0, 1).toUpperCase()
+						+ result.getString("name").substring(1);
+				String lastName = result.getString("lastname").substring(0, 1).toUpperCase()
+						+ result.getString("lastname").substring(1);
+				String[] palabras = result.getString("secondlastname").toLowerCase().split(" ");
+		        StringBuilder secondLastNameFormatted = new StringBuilder();
+
+		        for (String palabra : palabras) {
+		            if (!palabra.isEmpty()) {
+		                secondLastNameFormatted.append(Character.toUpperCase(palabra.charAt(0)))
+		                         .append(palabra.substring(1))
+		                         .append(" ");
+		            }
+		        }
+				userData.setFullName(name + " " + lastName + " " + secondLastNameFormatted);
+				String hordefinFormatted = result.getString("hordefin").replace("-", " a ");
+				userData.setWorkHours(hordefinFormatted);
 			}
 
 		} catch (SQLException e) {
-			log.info("{}","error retrieving user data from portal" + e.getMessage());
-			throw new DatabaseException("error retrieving user data from portal" + e.getMessage(), e);			
+			log.info("{}", "error retrieving user data from portal" + e.getMessage());
+			throw new DatabaseException("error retrieving user data from portal" + e.getMessage(), e);
 		}
 
 		if (userData != null) {
-			String sqlGirh = "SELECT TOP 1 * FROM HISTORIC WHERE HisFunCod =" + userData.getIdentityCard() + " "
-					+ "AND HisConCod=803 ORDER BY HisLiqFch desc, hisImp DESC";
+			try {
+				Class.forName(DRIVER_GIRH).getDeclaredConstructor().newInstance();
+			} catch (Exception e2) {
+				throw new DatabaseException("SQLServer loading issues found " + e2.getMessage(), e2);
+			}
+
+			String sqlGirh = "SELECT TOP 1 CAST(hisImp AS DECIMAL(10,2)) salary FROM HISTORIC WHERE HisConCod=803 AND HisFunCod = "+userData.getIdentityCard()+" ORDER BY HisLiqFch desc, hisImp DESC\r\n"
+					+ "";
 			try (Connection connectionGirh = DriverManager.getConnection(PROTOCOL_GIRH, USER_GIRH, PASSWORD_GIRH);
 					Statement statementGirh = connectionGirh.createStatement();
 					ResultSet resultGirh = statementGirh.executeQuery(sqlGirh)) {
 
 				if (resultGirh.next()) {
-					userData.setSalary(resultGirh.getString("HisImp"));
+					userData.setSalary(resultGirh.getString("salary"));
 				}
 			} catch (SQLException e) {
-				log.info("{}","error retrieving user data from girh" + e.getMessage());
+				log.info("{}", "error retrieving user data from girh" + e.getMessage());
 				throw new DatabaseException("error retrieving user data from girh" + e.getMessage(), e);
 			}
 		}
@@ -120,6 +142,9 @@ public class EmploymentCertificateService {
 		int day = today.getDayOfMonth();
 		int month = today.getMonthValue();
 		int year = today.getYear();
+		
+		String dayFormatted = String.format("%02d", day);
+		String monthFormatted = String.format("%02d", month);
 
 		try {
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -131,13 +156,19 @@ public class EmploymentCertificateService {
 			PdfWriter.getInstance(document, out);
 			document.open();
 
-			Image headerImage = Image.getInstance(HEADER_IMAGE);
+			Image headerImage = null;
+			try {
+				headerImage = Image.getInstance(HEADER_IMAGE);
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				throw new GenerationException("header image not found", e1);
+			}
 			headerImage.scaleToFit(500, 50);
-			headerImage.setAlignment(Element.ALIGN_LEFT);
+			headerImage.setAlignment(Element.ALIGN_MIDDLE);
 			document.add(headerImage);
 
 			Paragraph date = new Paragraph();
-			date.add(new Chunk(city + ", " + day + " de " + month + " de " + year, italicFont));
+			date.add(new Chunk(city + ", " + dayFormatted + " de " + monthFormatted + " de " + year, italicFont));
 			date.setAlignment(Element.ALIGN_RIGHT);
 			date.setSpacingAfter(10);
 			document.add(date);
@@ -187,11 +218,16 @@ public class EmploymentCertificateService {
 			company.setAlignment(Element.ALIGN_LEFT);
 			document.add(company);
 
-			Image footerImage;
+			Image footerImage = null;
 
-			footerImage = Image.getInstance(FOOTER_IMAGE);
+			try {
+				footerImage = Image.getInstance(FOOTER_IMAGE);
+			} catch (IOException e2) {
+				// TODO Auto-generated catch block
+				throw new GenerationException("footer image not found", e2);
+			}
 			footerImage.scaleToFit(500, 50);
-			footerImage.setAlignment(Element.ALIGN_LEFT);
+			footerImage.setAlignment(Element.ALIGN_MIDDLE);
 			document.add(footerImage);
 
 			document.close();
@@ -199,9 +235,32 @@ public class EmploymentCertificateService {
 			return out.toByteArray();
 		} catch (DocumentException e) {
 			throw new GenerationException("error generating PDF file", e);
-		} catch (IOException e2) {
-			throw new GenerationException("error loading header image", e2);
+		} 
+	}
+
+	public void userExists(String id) {
+
+		try {
+			Class.forName(DRIVER_ORACLE).getDeclaredConstructor().newInstance();
+		} catch (Exception e1) {
+			throw new DatabaseException("oracle loading issues found " + e1.getMessage(), e1);
 		}
+
+		String sql = "SELECT * FROM HUMANRESOURCES_STAFF hs WHERE hs.document ='" + id + "'";
+
+		try (Connection connection = DriverManager.getConnection(PROTOCOL_PORTAL, USER_PORTAL, PASSWORD_PORTAL);
+				Statement statement = connection.createStatement();
+				ResultSet result = statement.executeQuery(sql)) {
+
+			if (!result.next()) {
+				throw new NotFoundException("Usuario " + id + " no encontrado");
+			}
+
+		} catch (SQLException e) {
+			log.info("{}", "error retrieving user data from portal" + e.getMessage());
+			throw new DatabaseException("error retrieving user data from portal" + e.getMessage(), e);
+		}
+
 	}
 
 }
