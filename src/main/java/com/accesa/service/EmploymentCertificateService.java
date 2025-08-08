@@ -156,9 +156,15 @@ public class EmploymentCertificateService {
 			PdfWriter.getInstance(document, out);
 			document.open();
 
-			Image headerImage = Image.getInstance(HEADER_IMAGE);
+			Image headerImage = null;
+			try {
+				headerImage = Image.getInstance(HEADER_IMAGE);
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				throw new GenerationException("header image not found", e1);
+			}
 			headerImage.scaleToFit(500, 50);
-			headerImage.setAlignment(Element.ALIGN_LEFT);
+			headerImage.setAlignment(Element.ALIGN_MIDDLE);
 			document.add(headerImage);
 
 			Paragraph date = new Paragraph();
@@ -212,11 +218,16 @@ public class EmploymentCertificateService {
 			company.setAlignment(Element.ALIGN_LEFT);
 			document.add(company);
 
-			Image footerImage;
+			Image footerImage = null;
 
-			footerImage = Image.getInstance(FOOTER_IMAGE);
+			try {
+				footerImage = Image.getInstance(FOOTER_IMAGE);
+			} catch (IOException e2) {
+				// TODO Auto-generated catch block
+				throw new GenerationException("footer image not found", e2);
+			}
 			footerImage.scaleToFit(500, 50);
-			footerImage.setAlignment(Element.ALIGN_LEFT);
+			footerImage.setAlignment(Element.ALIGN_MIDDLE);
 			document.add(footerImage);
 
 			document.close();
@@ -224,9 +235,7 @@ public class EmploymentCertificateService {
 			return out.toByteArray();
 		} catch (DocumentException e) {
 			throw new GenerationException("error generating PDF file", e);
-		} catch (IOException e2) {
-			throw new GenerationException("error loading header image", e2);
-		}
+		} 
 	}
 
 	public void userExists(String id) {
